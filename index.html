@@ -168,8 +168,13 @@
   .slot.booked:active{ background: rgba(178,59,59,0.28); }
 
   .slot.past{
-    opacity: 0.4;
+    background: rgba(255,255,255,0.03);
+    border-color: var(--line);
+    opacity: 0.55;
+    pointer-events: none;
   }
+  .slot.past::before{ background: var(--text-dim); opacity:0.4; }
+  .slot.past .slot-status{ color: var(--text-dim) !important; }
 
   .slot-time{
     font-size: 19px;
@@ -419,6 +424,36 @@ const START_HOUR = 9;
 const END_HOUR = 16; // last slot starts at 15 -> 16
 const SHARED = true; // kept for interface compatibility; not used by localStorage below
 
+/* ---------- Email notification settings (Google Apps Script + Gmail) ----------
+   Replace this with your deployed Apps Script Web App URL (ends in /exec). */
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9z2TweZWcjZNtnlnYH4PQ_i6gRgYkj1V_rvYJlXHMhmfCrIlQhBY1XBtu9xHJ9l6y/exec";
+const NOTIFY_EMAIL = "info@ifmi.com.sa";
+
+function sendBookingEmail(details){
+  if(!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "YOUR_WEB_APP_URL") return; // not configured yet
+  try{
+    // no-cors + text/plain avoids a CORS preflight that Apps Script can't answer.
+    // We can't read the response, but the request still reaches the script and sends the email.
+    fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        to_email: NOTIFY_EMAIL,
+        room: "قاعة الاجتماعات",
+        date: details.dateLabel,
+        time: details.timeLabel,
+        name: details.name,
+        dept: details.dept,
+        type: details.type,
+        phone: details.phone
+      })
+    }).catch(e => console.error('Notification request failed', e));
+  }catch(e){
+    console.error('Notification send failed', e);
+  }
+}
+
 /* ---------- Standalone storage layer (localStorage) ----------
    This mimics the same get/set/delete/list interface so the rest
    of the app code below doesn't need to change. Data is saved on
@@ -490,6 +525,12 @@ function updateDayLabel(){
   const label = `${arabicDays[currentDate.getDay()]}، ${currentDate.getDate()} ${arabicMonths[currentDate.getMonth()]}`;
   document.getElementById('day-label-text').textContent = label;
   document.getElementById('today-pill').style.display = isSameDay(currentDate, today) ? 'block' : 'none';
+
+  const prevBtn = document.getElementById('prev-day');
+  const atToday = isSameDay(currentDate, today);
+  prevBtn.disabled = atToday;
+  prevBtn.style.opacity = atToday ? '0.35' : '1';
+  prevBtn.style.pointerEvents = atToday ? 'none' : 'auto';
 }
 
 function showToast(msg){
@@ -526,14 +567,13 @@ function renderSlots(){
   const now = new Date();
   const today = new Date(); today.setHours(0,0,0,0);
   const isToday = isSameDay(currentDate, today);
+  const isPastDay = currentDate.getTime() < today.getTime();
 
   for(let h = START_HOUR; h < END_HOUR; h++){
     const booking = currentBookingsCache[h];
+    const isPast = isPastDay || (isToday && (now.getHours() >= h+1));
     const slot = document.createElement('div');
-    slot.className = 'slot ' + (booking ? 'booked' : 'available');
-
-    const isPast = isToday && (now.getHours() >= h+1);
-    if(isPast && !booking) slot.classList.add('past');
+    slot.className = 'slot ' + (booking ? 'booked' : (isPast ? 'past' : 'available'));
 
     const timeEl = document.createElement('div');
     timeEl.className = 'slot-time';
@@ -545,7 +585,7 @@ function renderSlots(){
       infoEl.innerHTML = `<div class="slot-status">محجوز</div>
         <div class="slot-meta">${escapeHtml(booking.name)} · ${escapeHtml(booking.dept)}</div>`;
     }else{
-      infoEl.innerHTML = `<div class="slot-status">متاح</div>`;
+      infoEl.innerHTML = `<div class="slot-status">${isPast ? 'انتهى الوقت' : 'متاح'}</div>`;
     }
 
     const badge = document.createElement('div');
@@ -646,6 +686,12 @@ document.getElementById('confirm-booking').addEventListener('click', async ()=>{
     bookingOverlay.classList.remove('show');
     showToast('تم تأكيد الحجز');
     await loadBookingsForCurrentDay();
+
+    sendBookingEmail({
+      dateLabel: document.getElementById('day-label-text').textContent,
+      timeLabel: `${fmtHour12(selectedHour)} – ${fmtHour12(selectedHour+1)}`,
+      name, dept, type, phone
+    });
   }catch(e){
     errEl.textContent = 'حدث خطأ أثناء الحجز، حاول مرة أخرى';
     console.error(e);
