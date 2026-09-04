@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>حجز غرفة الاجتماعات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12161c;
+    --panel: #1a2029;
+    --panel-2: #212836;
+    --line: #2b3342;
+    --text: #eef1f5;
+    --text-dim: #8d97a8;
+    --available: #1f8f6b;
+    --available-2: #17b381;
+    --booked: #b23b3b;
+    --booked-2: #8f2e2e;
+    --gold: #c9a24b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 50% -10%, #1c222c 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    overflow:hidden;
+  }
+  #app{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding: 22px 20px 16px;
+  }
+
+  /* Header */
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .room-name{
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+  }
+  .room-sub{
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 2px;
+    font-weight: 500;
+  }
+  .clock-block{ text-align:left; direction:ltr; }
+  .clock{ font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .date{ color: var(--text-dim); font-size: 13px; margin-top:2px; }
+
+  /* Day switcher */
+  .day-switcher{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    margin: 14px 0 10px;
+  }
+  .day-btn{
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    color: var(--text);
+    width:44px; height:44px;
+    border-radius: 12px;
+    font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .day-btn:active{ background:#2a3242; }
+  .day-label{
+    min-width: 220px;
+    text-align:center;
+    font-size:16px;
+    font-weight:700;
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 18px;
+  }
+  .today-pill{
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    display:block;
+    margin-top:1px;
+  }
+
+  /* Slots */
+  .slots{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+    overflow-y:auto;
+    padding: 4px 2px 8px;
+  }
+  .slot{
+    border-radius: 16px;
+    padding: 16px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-height: 64px;
+    border: 1px solid transparent;
+    position:relative;
+    overflow:hidden;
+  }
+  .slot::before{
+    content:"";
+    position:absolute; inset-inline-start:0; top:0; bottom:0;
+    width:6px;
+  }
+  .slot.available{
+    background: linear-gradient(90deg, rgba(31,143,107,0.16), rgba(31,143,107,0.06));
+    border-color: rgba(31,143,107,0.35);
+  }
+  .slot.available::before{ background: var(--available-2); }
+  .slot.available:active{ background: rgba(31,143,107,0.28); }
+
+  .slot.booked{
+    background: linear-gradient(90deg, rgba(178,59,59,0.18), rgba(178,59,59,0.07));
+    border-color: rgba(178,59,59,0.4);
+  }
+  .slot.booked::before{ background: var(--booked); }
+  .slot.booked:active{ background: rgba(178,59,59,0.28); }
+
+  .slot.past{
+    opacity: 0.4;
+  }
+
+  .slot-time{
+    font-size: 19px;
+    font-weight: 700;
+    min-width: 130px;
+  }
+  .slot-info{ flex:1; text-align: center; }
+  .slot-status{
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .slot.available .slot-status{ color: var(--available-2); }
+  .slot.booked .slot-status{ color: #e08787; }
+  .slot-meta{
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .badge{
+    font-size: 11px;
+    font-weight:700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-dim);
+  }
+
+  /* Overlay + modal */
+  .overlay{
+    position:fixed; inset:0;
+    background: rgba(6,8,11,0.72);
+    backdrop-filter: blur(2px);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .overlay.show{ display:flex; }
+  .modal{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    width: 100%;
+    max-width: 440px;
+    padding: 22px;
+    max-height: 90vh;
+    overflow-y:auto;
+  }
+  .modal-title{
+    font-size: 19px;
+    font-weight: 900;
+    margin-bottom: 2px;
+  }
+  .modal-sub{
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .field{ margin-bottom: 14px; }
+  .field label{
+    display:block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .field input[type=text], .field input[type=tel]{
+    width:100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 13px 14px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .field input:focus{ outline: 2px solid var(--gold); }
+
+  .toggle-row{ display:flex; gap:10px; }
+  .toggle-opt{
+    flex:1;
+    text-align:center;
+    padding: 12px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    font-weight:700;
+    font-size: 14px;
+  }
+  .toggle-opt.active{
+    border-color: var(--gold);
+    background: rgba(201,162,75,0.15);
+    color: var(--gold);
+  }
+
+  .error-msg{
+    color:#f0a0a0;
+    font-size: 13px;
+    min-height: 18px;
+    margin-top: -6px;
+    margin-bottom: 8px;
+  }
+
+  .modal-actions{
+    display:flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .btn{
+    flex:1;
+    padding: 14px;
+    border-radius: 12px;
+    border:none;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .btn-primary{ background: var(--available-2); color:#08251b; }
+  .btn-primary:active{ background:#149069; }
+  .btn-secondary{ background: var(--panel-2); color: var(--text); border:1px solid var(--line); }
+  .btn-danger{ background: var(--booked); color:#fff; }
+  .btn-danger:active{ background: var(--booked-2); }
+
+  .detail-row{
+    display:flex; justify-content:space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .detail-row:last-of-type{ border-bottom:none; }
+  .detail-row span:first-child{ color: var(--text-dim); }
+  .detail-row span:last-child{ font-weight: 700; }
+
+  .toast{
+    position: fixed;
+    bottom: 26px; left:50%; transform: translateX(-50%);
+    background: var(--panel-2);
+    border:1px solid var(--line);
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .25s, transform .25s;
+    z-index: 60;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(-6px); }
+
+  ::-webkit-scrollbar{ width:6px; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius:6px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div>
+      <div class="room-name">قاعة الاجتماعات</div>
+      <div class="room-sub">نظام تنظيم المواعيد</div>
+    </div>
+    <div class="clock-block">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="today-date"></div>
+    </div>
+  </div>
+
+  <div class="day-switcher">
+    <button class="day-btn" id="prev-day">‹</button>
+    <div class="day-label">
+      <div id="day-label-text">اليوم</div>
+      <span class="today-pill" id="today-pill" style="display:none;">● اليوم</span>
+    </div>
+    <button class="day-btn" id="next-day">›</button>
+  </div>
+
+  <div class="slots" id="slots"></div>
+</div>
+
+<!-- Booking form modal -->
+<div class="overlay" id="booking-overlay">
+  <div class="modal">
+    <div class="modal-title">حجز الموعد</div>
+    <div class="modal-sub" id="booking-time-label">من 9:00 إلى 10:00</div>
+
+    <div class="field">
+      <label>الاسم</label>
+      <input type="text" id="f-name" placeholder="اكتب اسمك الكامل">
+    </div>
+    <div class="field">
+      <label>القطاع / الإدارة</label>
+      <input type="text" id="f-dept" placeholder="مثال: التسويق">
+    </div>
+    <div class="field">
+      <label>نوع الاجتماع</label>
+      <div class="toggle-row">
+        <div class="toggle-opt active" id="opt-internal" data-val="داخلي">داخلي (زملاء)</div>
+        <div class="toggle-opt" id="opt-external" data-val="خارجي">خارجي (عميل)</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>رقم الجوال</label>
+      <input type="tel" id="f-phone" placeholder="05xxxxxxxx" inputmode="numeric">
+    </div>
+    <div class="error-msg" id="form-error"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancel-booking">إلغاء</button>
+      <button class="btn btn-primary" id="confirm-booking">تأكيد الحجز</button>
+    </div>
+  </div>
+</div>
+
+<!-- Booking details modal -->
+<div class="overlay" id="details-overlay">
+  <div class="modal">
+    <div class="modal-title">تفاصيل الحجز</div>
+    <div class="modal-sub" id="details-time-label"></div>
+
+    <div class="detail-row"><span>الاسم</span><span id="d-name"></span></div>
+    <div class="detail-row"><span>القطاع</span><span id="d-dept"></span></div>
+    <div class="detail-row"><span>نوع الاجتماع</span><span id="d-type"></span></div>
+    <div class="detail-row"><span>رقم الجوال</span><span id="d-phone" style="direction:ltr;"></span></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="close-details">إغلاق</button>
+      <button class="btn btn-danger" id="cancel-reservation">إلغاء الحجز</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const START_HOUR = 9;
+const END_HOUR = 16; // last slot starts at 15 -> 16
+const SHARED = true; // kept for interface compatibility; not used by localStorage below
+
+/* ---------- Standalone storage layer (localStorage) ----------
+   This mimics the same get/set/delete/list interface so the rest
+   of the app code below doesn't need to change. Data is saved on
+   THIS device/browser only — perfect for a single door-mounted tablet. */
+window.storage = {
+  async get(key){
+    const val = localStorage.getItem(key);
+    if(val === null) return null;
+    return { key, value: val };
+  },
+  async set(key, value){
+    localStorage.setItem(key, value);
+    return { key, value };
+  },
+  async delete(key){
+    const existed = localStorage.getItem(key) !== null;
+    localStorage.removeItem(key);
+    return { key, deleted: existed };
+  },
+  async list(prefix){
+    const keys = [];
+    for(let i=0; i<localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(!prefix || k.startsWith(prefix)) keys.push(k);
+    }
+    return { keys, prefix };
+  }
+};
+
+const arabicDays = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const arabicMonths = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+let selectedHour = null;
+let currentBookingsCache = {}; // hour -> data
+
+function fmtDateKey(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function isSameDay(a,b){
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+
+function fmtHour12(h){
+  const period = h >= 12 ? 'م' : 'ص';
+  let hh = h % 12;
+  if(hh === 0) hh = 12;
+  return `${hh}:00 ${period}`;
+}
+
+function updateClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+  document.getElementById('today-date').textContent =
+    `${arabicDays[now.getDay()]}، ${now.getDate()} ${arabicMonths[now.getMonth()]}`;
+}
+updateClock();
+setInterval(updateClock, 1000*15);
+
+function updateDayLabel(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const label = `${arabicDays[currentDate.getDay()]}، ${currentDate.getDate()} ${arabicMonths[currentDate.getMonth()]}`;
+  document.getElementById('day-label-text').textContent = label;
+  document.getElementById('today-pill').style.display = isSameDay(currentDate, today) ? 'block' : 'none';
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+async function loadBookingsForCurrentDay(){
+  const key = fmtDateKey(currentDate);
+  currentBookingsCache = {};
+  try{
+    const res = await window.storage.list(`booking:${key}:`, SHARED);
+    const keys = (res && res.keys) ? res.keys : [];
+    for(const k of keys){
+      try{
+        const item = await window.storage.get(k, SHARED);
+        if(item && item.value){
+          const hour = k.split(':').pop();
+          currentBookingsCache[hour] = JSON.parse(item.value);
+        }
+      }catch(e){ /* key vanished, ignore */ }
+    }
+  }catch(e){
+    console.error('تعذر تحميل الحجوزات', e);
+  }
+  renderSlots();
+}
+
+function renderSlots(){
+  const container = document.getElementById('slots');
+  container.innerHTML = '';
+  const now = new Date();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isToday = isSameDay(currentDate, today);
+
+  for(let h = START_HOUR; h < END_HOUR; h++){
+    const booking = currentBookingsCache[h];
+    const slot = document.createElement('div');
+    slot.className = 'slot ' + (booking ? 'booked' : 'available');
+
+    const isPast = isToday && (now.getHours() >= h+1);
+    if(isPast && !booking) slot.classList.add('past');
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'slot-time';
+    timeEl.textContent = `${fmtHour12(h)} – ${fmtHour12(h+1)}`;
+
+    const infoEl = document.createElement('div');
+    infoEl.className = 'slot-info';
+    if(booking){
+      infoEl.innerHTML = `<div class="slot-status">محجوز</div>
+        <div class="slot-meta">${escapeHtml(booking.name)} · ${escapeHtml(booking.dept)}</div>`;
+    }else{
+      infoEl.innerHTML = `<div class="slot-status">متاح</div>`;
+    }
+
+    const badge = document.createElement('div');
+    if(booking){
+      badge.className = 'badge';
+      badge.textContent = booking.type === 'خارجي' ? 'خارجي' : 'داخلي';
+    }
+
+    slot.appendChild(timeEl);
+    slot.appendChild(infoEl);
+    slot.appendChild(badge);
+
+    slot.addEventListener('click', () => {
+      if(booking){
+        openDetails(h, booking);
+      } else if(!isPast){
+        openBookingForm(h);
+      } else {
+        showToast('هذا الموعد فات وقته');
+      }
+    });
+
+    container.appendChild(slot);
+  }
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+/* ---------- Booking form ---------- */
+const bookingOverlay = document.getElementById('booking-overlay');
+const detailsOverlay = document.getElementById('details-overlay');
+
+function openBookingForm(hour){
+  selectedHour = hour;
+  document.getElementById('booking-time-label').textContent =
+    `${document.getElementById('day-label-text').textContent} · من ${fmtHour12(hour)} إلى ${fmtHour12(hour+1)}`;
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-dept').value = '';
+  document.getElementById('f-phone').value = '';
+  document.getElementById('form-error').textContent = '';
+  setMeetingType('داخلي');
+  bookingOverlay.classList.add('show');
+  setTimeout(()=> document.getElementById('f-name').focus(), 150);
+}
+
+function setMeetingType(val){
+  document.getElementById('opt-internal').classList.toggle('active', val === 'داخلي');
+  document.getElementById('opt-external').classList.toggle('active', val === 'خارجي');
+  bookingOverlay.dataset.type = val;
+}
+
+document.getElementById('opt-internal').addEventListener('click', ()=> setMeetingType('داخلي'));
+document.getElementById('opt-external').addEventListener('click', ()=> setMeetingType('خارجي'));
+
+document.getElementById('cancel-booking').addEventListener('click', ()=>{
+  bookingOverlay.classList.remove('show');
+});
+
+document.getElementById('confirm-booking').addEventListener('click', async ()=>{
+  const name = document.getElementById('f-name').value.trim();
+  const dept = document.getElementById('f-dept').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const type = bookingOverlay.dataset.type || 'داخلي';
+  const errEl = document.getElementById('form-error');
+
+  if(!name || !dept || !phone){
+    errEl.textContent = 'الرجاء تعبئة جميع الحقول';
+    return;
+  }
+  if(!/^[0-9+ ]{7,15}$/.test(phone)){
+    errEl.textContent = 'رقم الجوال غير صحيح';
+    return;
+  }
+
+  const dateKey = fmtDateKey(currentDate);
+  const storageKey = `booking:${dateKey}:${selectedHour}`;
+
+  try{
+    // re-check freshness right before writing to avoid double booking
+    let existing = null;
+    try{ existing = await window.storage.get(storageKey, SHARED); }catch(e){ existing = null; }
+    if(existing && existing.value){
+      errEl.textContent = 'تم حجز هذا الموعد للتو من شخص آخر';
+      await loadBookingsForCurrentDay();
+      return;
+    }
+
+    const data = { name, dept, type, phone, bookedAt: new Date().toISOString() };
+    const result = await window.storage.set(storageKey, JSON.stringify(data), SHARED);
+    if(!result){
+      errEl.textContent = 'حدث خطأ أثناء الحجز، حاول مرة أخرى';
+      return;
+    }
+    bookingOverlay.classList.remove('show');
+    showToast('تم تأكيد الحجز');
+    await loadBookingsForCurrentDay();
+  }catch(e){
+    errEl.textContent = 'حدث خطأ أثناء الحجز، حاول مرة أخرى';
+    console.error(e);
+  }
+});
+
+/* ---------- Details / cancel ---------- */
+let selectedDetailsHour = null;
+
+function openDetails(hour, booking){
+  selectedDetailsHour = hour;
+  document.getElementById('details-time-label').textContent =
+    `${document.getElementById('day-label-text').textContent} · من ${fmtHour12(hour)} إلى ${fmtHour12(hour+1)}`;
+  document.getElementById('d-name').textContent = booking.name;
+  document.getElementById('d-dept').textContent = booking.dept;
+  document.getElementById('d-type').textContent = booking.type;
+  document.getElementById('d-phone').textContent = booking.phone;
+  detailsOverlay.classList.add('show');
+}
+
+document.getElementById('close-details').addEventListener('click', ()=>{
+  detailsOverlay.classList.remove('show');
+});
+
+document.getElementById('cancel-reservation').addEventListener('click', async ()=>{
+  const btn = document.getElementById('cancel-reservation');
+  if(btn.dataset.confirm !== '1'){
+    btn.dataset.confirm = '1';
+    btn.textContent = 'اضغط للتأكيد';
+    setTimeout(()=>{ btn.dataset.confirm=''; btn.textContent='إلغاء الحجز'; }, 3000);
+    return;
+  }
+  btn.dataset.confirm = '';
+  btn.textContent = 'إلغاء الحجز';
+
+  const dateKey = fmtDateKey(currentDate);
+  const storageKey = `booking:${dateKey}:${selectedDetailsHour}`;
+  try{
+    await window.storage.delete(storageKey, SHARED);
+    detailsOverlay.classList.remove('show');
+    showToast('تم إلغاء الحجز');
+    await loadBookingsForCurrentDay();
+  }catch(e){
+    showToast('تعذر إلغاء الحجز');
+    console.error(e);
+  }
+});
+
+/* ---------- Day navigation ---------- */
+document.getElementById('prev-day').addEventListener('click', async ()=>{
+  currentDate.setDate(currentDate.getDate()-1);
+  updateDayLabel();
+  await loadBookingsForCurrentDay();
+});
+document.getElementById('next-day').addEventListener('click', async ()=>{
+  currentDate.setDate(currentDate.getDate()+1);
+  updateDayLabel();
+  await loadBookingsForCurrentDay();
+});
+
+/* ---------- Init ---------- */
+updateDayLabel();
+loadBookingsForCurrentDay();
+
+// Auto-refresh every 20s so a second tablet / browser stays in sync
+setInterval(loadBookingsForCurrentDay, 20000);
+</script>
+</body>
+</html>
