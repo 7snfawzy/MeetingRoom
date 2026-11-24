@@ -386,14 +386,6 @@
         <div class="toggle-opt" id="opt-external" data-val="خارجي">خارجي (عميل)</div>
       </div>
     </div>
-    <div class="field">
-      <label>رقم الجوال</label>
-      <input type="tel" id="f-phone" placeholder="05xxxxxxxx" inputmode="numeric">
-    </div>
-    <div class="field">
-      <label>البريد الإلكتروني (اختياري — لاستلام التأكيد والتذكير)</label>
-      <input type="text" id="f-email" placeholder="name@company.com" inputmode="email" autocomplete="off" autocapitalize="off" style="direction:ltr;text-align:left;">
-    </div>
     <div class="error-msg" id="form-error"></div>
 
     <div class="modal-actions">
@@ -412,7 +404,6 @@
     <div class="detail-row"><span>الاسم</span><span id="d-name"></span></div>
     <div class="detail-row"><span>القطاع</span><span id="d-dept"></span></div>
     <div class="detail-row"><span>نوع الاجتماع</span><span id="d-type"></span></div>
-    <div class="detail-row"><span>رقم الجوال</span><span id="d-phone" style="direction:ltr;"></span></div>
 
     <div class="modal-actions">
       <button class="btn btn-secondary" id="close-details">إغلاق</button>
@@ -597,8 +588,6 @@ function openBookingForm(hour){
     `${document.getElementById('day-label-text').textContent} · من ${fmtHour12(hour)} إلى ${fmtHour12(hour+1)}`;
   document.getElementById('f-name').value = '';
   document.getElementById('f-dept').value = '';
-  document.getElementById('f-phone').value = '';
-  document.getElementById('f-email').value = '';
   document.getElementById('form-error').textContent = '';
   setMeetingType('داخلي');
   bookingOverlay.classList.add('show');
@@ -621,22 +610,12 @@ document.getElementById('cancel-booking').addEventListener('click', ()=>{
 document.getElementById('confirm-booking').addEventListener('click', async ()=>{
   const name = document.getElementById('f-name').value.trim();
   const dept = document.getElementById('f-dept').value.trim();
-  const phone = document.getElementById('f-phone').value.trim();
-  const email = document.getElementById('f-email').value.trim();
   const type = bookingOverlay.dataset.type || 'داخلي';
   const errEl = document.getElementById('form-error');
   const btn = document.getElementById('confirm-booking');
 
-  if(!name || !dept || !phone){
-    errEl.textContent = 'الرجاء تعبئة جميع الحقول';
-    return;
-  }
-  if(!/^[0-9+ ]{7,15}$/.test(phone)){
-    errEl.textContent = 'رقم الجوال غير صحيح';
-    return;
-  }
-  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    errEl.textContent = 'البريد الإلكتروني غير صحيح';
+  if(!name || !dept){
+    errEl.textContent = 'الرجاء تعبئة الاسم والقطاع';
     return;
   }
 
@@ -652,7 +631,7 @@ document.getElementById('confirm-booking').addEventListener('click', async ()=>{
       action: 'book',
       date: dateKey,
       hour: selectedHour,
-      name, dept, type, phone, email
+      name, dept, type
     });
 
     if(json.status === 'conflict'){
@@ -691,7 +670,6 @@ function openDetails(hour, booking){
   document.getElementById('d-name').textContent = booking.name;
   document.getElementById('d-dept').textContent = booking.dept;
   document.getElementById('d-type').textContent = booking.type;
-  document.getElementById('d-phone').textContent = booking.phone;
   detailsOverlay.classList.add('show');
 }
 
