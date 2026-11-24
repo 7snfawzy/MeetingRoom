@@ -390,6 +390,10 @@
       <label>رقم الجوال</label>
       <input type="tel" id="f-phone" placeholder="05xxxxxxxx" inputmode="numeric">
     </div>
+    <div class="field">
+      <label>البريد الإلكتروني (اختياري — لاستلام التأكيد والتذكير)</label>
+      <input type="text" id="f-email" placeholder="name@company.com" inputmode="email" autocomplete="off" autocapitalize="off" style="direction:ltr;text-align:left;">
+    </div>
     <div class="error-msg" id="form-error"></div>
 
     <div class="modal-actions">
@@ -422,66 +426,35 @@
 <script>
 const START_HOUR = 9;
 const END_HOUR = 16; // last slot starts at 15 -> 16
-const SHARED = true; // kept for interface compatibility; not used by localStorage below
 
-/* ---------- Email notification settings (Google Apps Script + Gmail) ----------
-   Replace this with your deployed Apps Script Web App URL (ends in /exec). */
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw9z2TweZWcjZNtnlnYH4PQ_i6gRgYkj1V_rvYJlXHMhmfCrIlQhBY1XBtu9xHJ9l6y/exec";
-const NOTIFY_EMAIL = "info@ifmi.com.sa";
+/* ---------- Backend settings (Google Apps Script + Google Sheet + Gmail) ----------
+   All devices read/write bookings through this one Web App URL, so the
+   PC, phone, and the door tablet always show the same live state. */
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzsXkrvMDRe1CL77x6ltzWv32FlZjJtWIihndAR9-P-ReTNWFTmQMEp-Y9qIPPk-xTd/exec";
+// Email recipients, templates and reminders are all handled inside the Apps Script (NOTIFY_EMAIL lives there).
 
-function sendBookingEmail(details){
-  if(!GAS_WEB_APP_URL || GAS_WEB_APP_URL === "YOUR_WEB_APP_URL") return; // not configured yet
-  try{
-    // no-cors + text/plain avoids a CORS preflight that Apps Script can't answer.
-    // We can't read the response, but the request still reaches the script and sends the email.
-    fetch(GAS_WEB_APP_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        to_email: NOTIFY_EMAIL,
-        room: "قاعة الاجتماعات",
-        date: details.dateLabel,
-        time: details.timeLabel,
-        name: details.name,
-        dept: details.dept,
-        type: details.type,
-        phone: details.phone
-      })
-    }).catch(e => console.error('Notification request failed', e));
-  }catch(e){
-    console.error('Notification send failed', e);
-  }
+async function apiListBookings(dateKey){
+  const res = await fetch(`${GAS_WEB_APP_URL}?action=list&date=${encodeURIComponent(dateKey)}`);
+  return res.json();
 }
 
-/* ---------- Standalone storage layer (localStorage) ----------
-   This mimics the same get/set/delete/list interface so the rest
-   of the app code below doesn't need to change. Data is saved on
-   THIS device/browser only — perfect for a single door-mounted tablet. */
-window.storage = {
-  async get(key){
-    const val = localStorage.getItem(key);
-    if(val === null) return null;
-    return { key, value: val };
-  },
-  async set(key, value){
-    localStorage.setItem(key, value);
-    return { key, value };
-  },
-  async delete(key){
-    const existed = localStorage.getItem(key) !== null;
-    localStorage.removeItem(key);
-    return { key, deleted: existed };
-  },
-  async list(prefix){
-    const keys = [];
-    for(let i=0; i<localStorage.length; i++){
-      const k = localStorage.key(i);
-      if(!prefix || k.startsWith(prefix)) keys.push(k);
-    }
-    return { keys, prefix };
-  }
-};
+async function apiCreateBooking(payload){
+  const res = await fetch(GAS_WEB_APP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight Apps Script can't answer
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+async function apiCancelBooking(dateKey, hour){
+  const res = await fetch(GAS_WEB_APP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'cancel', date: dateKey, hour })
+  });
+  return res.json();
+}
 
 const arabicDays = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const arabicMonths = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -533,30 +506,26 @@ function updateDayLabel(){
   prevBtn.style.pointerEvents = atToday ? 'none' : 'auto';
 }
 
-function showToast(msg){
+let toastTimer = null;
+function showToast(msg, ms){
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(()=> t.classList.remove('show'), 2200);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), ms || 2200);
 }
 
 async function loadBookingsForCurrentDay(){
   const key = fmtDateKey(currentDate);
   currentBookingsCache = {};
   try{
-    const res = await window.storage.list(`booking:${key}:`, SHARED);
-    const keys = (res && res.keys) ? res.keys : [];
-    for(const k of keys){
-      try{
-        const item = await window.storage.get(k, SHARED);
-        if(item && item.value){
-          const hour = k.split(':').pop();
-          currentBookingsCache[hour] = JSON.parse(item.value);
-        }
-      }catch(e){ /* key vanished, ignore */ }
+    const json = await apiListBookings(key);
+    if(json && json.status === 'ok' && json.bookings){
+      currentBookingsCache = json.bookings;
     }
   }catch(e){
     console.error('تعذر تحميل الحجوزات', e);
+    showToast('تعذر الاتصال بالخادم');
   }
   renderSlots();
 }
@@ -629,6 +598,7 @@ function openBookingForm(hour){
   document.getElementById('f-name').value = '';
   document.getElementById('f-dept').value = '';
   document.getElementById('f-phone').value = '';
+  document.getElementById('f-email').value = '';
   document.getElementById('form-error').textContent = '';
   setMeetingType('داخلي');
   bookingOverlay.classList.add('show');
@@ -652,8 +622,10 @@ document.getElementById('confirm-booking').addEventListener('click', async ()=>{
   const name = document.getElementById('f-name').value.trim();
   const dept = document.getElementById('f-dept').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
+  const email = document.getElementById('f-email').value.trim();
   const type = bookingOverlay.dataset.type || 'داخلي';
   const errEl = document.getElementById('form-error');
+  const btn = document.getElementById('confirm-booking');
 
   if(!name || !dept || !phone){
     errEl.textContent = 'الرجاء تعبئة جميع الحقول';
@@ -663,38 +635,49 @@ document.getElementById('confirm-booking').addEventListener('click', async ()=>{
     errEl.textContent = 'رقم الجوال غير صحيح';
     return;
   }
+  if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    errEl.textContent = 'البريد الإلكتروني غير صحيح';
+    return;
+  }
 
+  errEl.textContent = '';
   const dateKey = fmtDateKey(currentDate);
-  const storageKey = `booking:${dateKey}:${selectedHour}`;
+
+  // Sending emails can take a few seconds: lock the button so a double tap can't submit twice.
+  btn.disabled = true;
+  btn.textContent = 'جاري الحجز...';
 
   try{
-    // re-check freshness right before writing to avoid double booking
-    let existing = null;
-    try{ existing = await window.storage.get(storageKey, SHARED); }catch(e){ existing = null; }
-    if(existing && existing.value){
+    const json = await apiCreateBooking({
+      action: 'book',
+      date: dateKey,
+      hour: selectedHour,
+      name, dept, type, phone, email
+    });
+
+    if(json.status === 'conflict'){
       errEl.textContent = 'تم حجز هذا الموعد للتو من شخص آخر';
       await loadBookingsForCurrentDay();
       return;
     }
-
-    const data = { name, dept, type, phone, bookedAt: new Date().toISOString() };
-    const result = await window.storage.set(storageKey, JSON.stringify(data), SHARED);
-    if(!result){
-      errEl.textContent = 'حدث خطأ أثناء الحجز، حاول مرة أخرى';
+    if(json.status !== 'ok'){
+      errEl.textContent = json.message || 'حدث خطأ أثناء الحجز، حاول مرة أخرى';
       return;
     }
-    bookingOverlay.classList.remove('show');
-    showToast('تم تأكيد الحجز');
-    await loadBookingsForCurrentDay();
 
-    sendBookingEmail({
-      dateLabel: document.getElementById('day-label-text').textContent,
-      timeLabel: `${fmtHour12(selectedHour)} – ${fmtHour12(selectedHour+1)}`,
-      name, dept, type, phone
-    });
+    bookingOverlay.classList.remove('show');
+    if(json.emailStatus === 'failed'){
+      showToast('تم تأكيد الحجز، لكن تعذر إرسال رسالة البريد الإلكتروني', 4500);
+    }else{
+      showToast('تم تأكيد الحجز');
+    }
+    await loadBookingsForCurrentDay();
   }catch(e){
-    errEl.textContent = 'حدث خطأ أثناء الحجز، حاول مرة أخرى';
+    errEl.textContent = 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
     console.error(e);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'تأكيد الحجز';
   }
 });
 
@@ -728,15 +711,25 @@ document.getElementById('cancel-reservation').addEventListener('click', async ()
   btn.textContent = 'إلغاء الحجز';
 
   const dateKey = fmtDateKey(currentDate);
-  const storageKey = `booking:${dateKey}:${selectedDetailsHour}`;
+  btn.disabled = true;
   try{
-    await window.storage.delete(storageKey, SHARED);
+    const json = await apiCancelBooking(dateKey, selectedDetailsHour);
+    if(json.status !== 'ok'){
+      showToast(json.message || 'تعذر إلغاء الحجز');
+      return;
+    }
     detailsOverlay.classList.remove('show');
-    showToast('تم إلغاء الحجز');
+    if(json.emailStatus === 'failed'){
+      showToast('تم إلغاء الحجز، لكن تعذر إرسال رسالة البريد الإلكتروني', 4500);
+    }else{
+      showToast('تم إلغاء الحجز');
+    }
     await loadBookingsForCurrentDay();
   }catch(e){
-    showToast('تعذر إلغاء الحجز');
+    showToast('تعذر الاتصال بالخادم');
     console.error(e);
+  }finally{
+    btn.disabled = false;
   }
 });
 
