@@ -15,18 +15,18 @@
 
   /* ===== Status (full colour) ===== */
   .status{
-    position:relative; display:flex; flex-direction:column; padding:3vh 3.2vw 3vh; color:#fff; overflow:hidden;
+    position:relative; display:flex; flex-direction:column; padding:2.4vh 3.2vw 3vh; color:#fff; overflow:hidden;
     background:linear-gradient(165deg,#25B57F 0%,#168A5B 100%); transition:background .5s;
   }
   .status[data-state="busy"]{background:linear-gradient(165deg,#E65A5A 0%,#B53030 100%);}
   .status[data-state="closed"]{background:linear-gradient(165deg,#7A8594 0%,#4B5563 100%);}
   .status::before{content:""; position:absolute; width:60vh; height:60vh; border-radius:50%; background:rgba(255,255,255,.07); inset-inline-end:-18vh; top:-16vh;}
   .status > *{position:relative;}
-  .brand{align-self:flex-start; background:#fff; border-radius:14px; padding:1.2vh 1.6vw; box-shadow:0 6px 18px rgba(0,0,0,.16);}
-  .brand img{height:5vh; width:auto; display:block;}
-  .room{margin-top:3vh; font-size:3.4vh; font-weight:700; opacity:.95;}
-  .clock{font-size:11vh; font-weight:900; line-height:1.05; direction:ltr; text-align:right; font-variant-numeric:tabular-nums;}
-  .date{font-size:2.6vh; opacity:.9;}
+  .brand{align-self:flex-start; background:#fff; border-radius:12px; padding:.8vh 1.1vw; box-shadow:0 6px 18px rgba(0,0,0,.16);}
+  .brand img{height:3.4vh; width:auto; display:block;}
+  .room{margin-top:1.6vh; font-size:2.4vh; font-weight:700; opacity:.95;}
+  .clock{font-size:7vh; font-weight:900; line-height:1.05; direction:ltr; text-align:right; font-variant-numeric:tabular-nums;}
+  .date{font-size:2vh; opacity:.9;}
   .sp{flex:1;}
   .label{font-size:15vh; font-weight:900; line-height:1;}
   .sub{font-size:3.6vh; font-weight:500; margin-top:1.2vh; opacity:.97;}
@@ -42,26 +42,27 @@
   /* ===== Right-hand info side: QR + today's agenda ===== */
   .side{display:flex; flex-direction:column; padding:3vh 2.4vw; gap:2.2vh; min-width:0;}
   .qr-card{
-    background:#fff; border-radius:26px; padding:2.6vh 2vw; text-align:center; border:1px solid var(--line);
+    background:#fff; border-radius:26px; padding:2vh 2vw; border:1px solid var(--line);
     box-shadow:0 8px 24px rgba(24,33,43,.07);
+    display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:2vw;
   }
-  .qr-title{font-size:3.4vh; font-weight:900;}
-  .qr-sub{font-size:2.1vh; color:var(--muted); margin:.4vh 0 1.6vh;}
-  #qr{display:inline-block; padding:1.4vh; background:#fff; border:3px solid var(--ink); border-radius:18px; line-height:0;}
-  #qr svg{width:min(26vh,16vw); height:min(26vh,16vw); display:block;}
-  .qr-url{margin-top:1.4vh; font-size:1.8vh; color:var(--muted); direction:ltr; word-break:break-all;}
+  .qr-text{flex:1; text-align:center; min-width:0;}
+  .qr-title{font-size:2.9vh; font-weight:900;}
+  .qr-sub{font-size:2.1vh; color:var(--muted); margin-top:.6vh;}
+  #qr{flex:0 0 auto; padding:1.2vh; background:#fff; border:3px solid var(--ink); border-radius:18px; line-height:0;}
+  #qr svg{width:26vh; height:26vh; display:block;}
 
   .ag-title{font-size:2.6vh; font-weight:900; margin-top:.4vh;}
-  .ag{flex:1; min-height:0; display:flex; flex-direction:column; gap:1vh;}
+  .ag{flex:1; min-height:0; display:flex; flex-direction:column; gap:1.1vh;}
   .row{flex:1 1 0; min-height:0; display:flex; align-items:center; gap:1.2vw; background:#fff; border:1px solid var(--line); border-radius:14px; padding:0 1.4vw; position:relative;}
   .row::before{content:""; position:absolute; inset-inline-start:0; top:22%; bottom:22%; width:5px; border-radius:5px; background:var(--free);}
   .row.booked::before{background:var(--busy);}
-  .row.past{opacity:.45;}
+  .row.past{opacity:.5;}
   .row.past::before{background:#C5CCD6;}
   .row.now{outline:3px solid var(--brand); outline-offset:1px;}
   .row .tm{width:11vh; font-weight:900; font-size:2.3vh; font-variant-numeric:tabular-nums; flex-shrink:0;}
   .row .tx{flex:1; min-width:0; font-size:2.2vh; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .row .tx small{font-weight:500; color:var(--muted); margin-inline-start:.6vw;}
+  .row .tx small{font-weight:500; color:var(--muted); margin-inline-start:.8vw; font-size:2vh;}
   .row.free .tx{color:var(--free);}
   .row .chip{font-size:1.7vh; font-weight:700; padding:.5vh 1vw; border-radius:999px; background:#DDF3E9; color:#12724C; white-space:nowrap;}
   .row .chip.wait{background:#FFF4DE; color:#B7791F;}
@@ -70,14 +71,14 @@
   @media (max-aspect-ratio: 1/1){
     #app{grid-template-columns:1fr; grid-template-rows:58% 42%;}
     .status{padding:2vh 5vw 2vh;}
-    .room{margin-top:1.4vh; font-size:2.4vh;}
-    .clock{font-size:6.5vh;} .date{font-size:1.8vh;}
+    .room{margin-top:1vh; font-size:2vh;}
+    .clock{font-size:5.5vh;} .date{font-size:1.8vh;}
     .label{font-size:7.5vh;} .sub{font-size:2.6vh; margin-top:.6vh;}
     .now{margin-top:1.4vh; padding:1.2vh 4vw;} .now .t{font-size:2.8vh;} .now .m,.now .nx{font-size:1.9vh;} .now .k{display:none;}
     .side{flex-direction:row; padding:1.6vh 3vw; gap:3vw; align-items:stretch;}
-    .qr-card{flex:0 0 42%; padding:1.6vh 2vw; display:flex; flex-direction:column; align-items:center; justify-content:center;}
-    .qr-title{font-size:2.3vh;} .qr-sub{font-size:1.6vh; margin:.2vh 0 1vh;}
-    #qr svg{width:min(18vh,32vw); height:min(18vh,32vw);} .qr-url{font-size:1.3vh;}
+    .qr-card{flex:0 0 42%; padding:1.6vh 2vw; flex-direction:column-reverse; justify-content:center; gap:1vh;}
+    .qr-title{font-size:2.1vh;} .qr-sub{font-size:1.5vh;}
+    #qr svg{width:min(18vh,32vw); height:min(18vh,32vw);}
     .ag-wrap{min-width:0;} .ag-title{font-size:2vh;}
     .row{padding:0 2vw; gap:2vw; overflow:hidden;} .row .tm{width:auto; font-size:1.7vh;} .row .tx{font-size:1.7vh;} .row .tx small{display:none;}
     .row .chip{font-size:1.3vh; padding:.3vh 1.2vw;}
@@ -100,10 +101,11 @@
 
   <section class="side">
     <div class="qr-card">
-      <div class="qr-title">احجز القاعة من جوالك</div>
-      <div class="qr-sub">وجّه كاميرا الجوال نحو الرمز</div>
+      <div class="qr-text">
+        <div class="qr-title">احجز القاعة من جوالك</div>
+        <div class="qr-sub">وجّه كاميرا الجوال نحو الرمز</div>
+      </div>
       <div id="qr"></div>
-      <div class="qr-url" id="qr-url"></div>
     </div>
     <div class="ag-wrap" style="flex:1; min-height:0; display:flex; flex-direction:column; gap:1vh;">
       <div class="ag-title">حجوزات اليوم</div>
@@ -2448,7 +2450,6 @@ function drawQr(){
     const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
     $('qr').innerHTML = qr.createSvgTag({cellSize:6, margin:0, scalable:true});
   }catch(e){ console.error(e); $('qr').textContent = 'تعذر إنشاء الرمز'; }
-  $('qr-url').textContent = url.replace(/^https?:\/\//,'');
 }
 
 /* ---------- Data ---------- */
